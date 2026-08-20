@@ -1,0 +1,20 @@
+{
+  "name": "molanko-mcp-avatar-generator",
+  "version": "0.1.0",
+  "description": "MCP server for Molanko Avatar Generator",
+  "type": "module",
+  "bin": {
+    "molanko-mcp-avatar-generator": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "molanko-avatar-generator": "github:lanlan3292/molanko-avatar-generator",
+    "zod": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
