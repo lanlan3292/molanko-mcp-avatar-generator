@@ -10,9 +10,9 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0",
-    "molanko-avatar-generator": "github:lanlan3292/molanko-avatar-generator",
-    "zod": "^4.0.0"
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "@napi-rs/canvas": "^1.0.5",
+    "molanko-avatar-generator": "github:lanlan3292/molanko-avatar-generator"
   },
   "engines": {
     "node": ">=20"
