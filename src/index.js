@@ -173,8 +173,8 @@ function createServer() {
         minecraftPlayer: z.string().min(1).optional().describe('Minecraft username or UUID, with or without hyphens. The server fetches the current skin through Mojang APIs.'),
         scale: z.number().positive().optional().default(1).describe('Nearest-neighbor output scale.'),
         outlineMode: z.number().int().min(0).optional().default(0).describe('Outline radius in pixels. 0 disables the outline.'),
-        outlineColor: z.string().optional().default('auto_darker').describe('Outline color: auto, auto_darker, auto_lighter, or a hex color.'),
-        bgColor: z.string().optional().default('auto_lighter').describe('Background color: auto, auto_lighter, auto_darker, or a hex color.'),
+        outlineColor: z.string().optional().default('auto').describe('Outline color: auto, auto_darker, auto_lighter, or a hex color.'),
+        bgColor: z.string().optional().default('auto').describe('Background color: auto, auto_lighter, auto_darker, or a hex color.'),
         fillBackground: z.boolean().optional().default(true).describe('Whether to fill the background.'),
         upscale48: z.boolean().optional().default(false).describe('Render the avatar on a 48x48 canvas with the 32x32 avatar centered.'),
         averageColor: z.string().optional().describe('Override the color used by automatic outline/background colors. Use auto (default), #RRGGBB, or #RGB.')
