@@ -3,8 +3,19 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { processTexture } from 'molanko-avatar-generator';
+import { getAverageColor, processTexture } from 'molanko-avatar-generator';
 import * as z from 'zod/v4';
+
+function decodeImageData(image) {
+  const data = image.data.startsWith('data:')
+    ? image.data.slice(image.data.indexOf(',') + 1)
+    : image.data;
+  const buffer = Buffer.from(data, 'base64');
+  if (buffer.length === 0) {
+    throw new Error('The source image is empty.');
+  }
+  return buffer;
+}
 
 function createServer() {
   const server = new McpServer({
@@ -16,7 +27,7 @@ function createServer() {
     type: z.literal('image'),
     data: z.string().min(1).describe('Base64-encoded image data, optionally as a data URL.'),
     mimeType: z.string().optional().default('image/png').describe('Input image MIME type.')
-  }).describe('The source skin/image to turn into a Molanko Avatar. This is required.');
+  }).describe('The source skin/image. This is required.');
 
   server.registerTool(
     'generate_avatar',
@@ -36,16 +47,7 @@ function createServer() {
     },
     async ({ image, outlineMode, outlineColor, bgColor, upscale48, fillBackground, scale }) => {
       try {
-        const data = image.data.startsWith('data:')
-          ? image.data.slice(image.data.indexOf(',') + 1)
-          : image.data;
-
-        const sourceBuffer = Buffer.from(data, 'base64');
-        if (sourceBuffer.length === 0) {
-          throw new Error('The source image is empty.');
-        }
-
-        const sourceImage = await loadImage(sourceBuffer);
+        const sourceImage = await loadImage(decodeImageData(image));
         const outputCanvas = processTexture(sourceImage, {
           createCanvas,
           outlineMode,
@@ -71,12 +73,48 @@ function createServer() {
         const message = error instanceof Error ? error.message : String(error);
         return {
           isError: true,
+          content: [{ type: 'text', text: `Failed to generate Molanko Avatar: ${message}` }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    'average_color',
+    {
+      title: 'Calculate Average Color',
+      description:
+        'Calculate the average RGB color of a provided source image, ignoring fully transparent pixels. A source image is required.',
+      inputSchema: z.object({
+        image: imageInput
+      })
+    },
+    async ({ image }) => {
+      try {
+        const sourceImage = await loadImage(decodeImageData(image));
+        const canvas = createCanvas(sourceImage.width, sourceImage.height);
+        const context = canvas.getContext('2d');
+        context.drawImage(sourceImage, 0, 0);
+
+        const color = getAverageColor(canvas);
+        const hex = `#${[color.r, color.g, color.b]
+          .map(value => value.toString(16).padStart(2, '0'))
+          .join('')}`;
+
+        return {
           content: [
             {
               type: 'text',
-              text: `Failed to generate Molanko Avatar: ${message}`
+              text: JSON.stringify({ ...color, hex })
             }
-          ]
+          ],
+          structuredContent: { ...color, hex }
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `Failed to calculate average color: ${message}` }]
         };
       }
     }
