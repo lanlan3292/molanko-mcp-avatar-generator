@@ -42,8 +42,8 @@ If both `image` and `minecraftPlayer` are supplied, the request is rejected rath
 
 - `scale` — nearest-neighbor output scale
 - `outlineMode` — outline radius; `0` disables the outline
-- `outlineColor` — `auto_dark`, `auto_darker`, `auto_medium_dark`, or a hex color
-- `bgColor` — `auto_light`, `auto_lighter`, `auto_medium_light`, or a hex color
+- `outlineColor` — `auto`, `auto_darker`, `auto_lighter`, or a hex color
+- `bgColor` — `auto`, `auto_lighter`, `auto_darker`, or a hex color
 - `fillBackground` — whether to fill the output background
 - `upscale48` — render the 32x32 avatar centered on a 48x48 canvas
 - `averageColor` — optional override for the color used by automatic outline/background colors; use `auto`, `#RRGGBB`, or `#RGB`
