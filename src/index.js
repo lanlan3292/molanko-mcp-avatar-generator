@@ -3,7 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { getAverageColor, processTexture } from 'molanko-avatar-generator';
+import { processTexture } from 'molanko-avatar-generator';
 import * as z from 'zod/v4';
 
 function decodeImageData(image) {
@@ -15,6 +15,27 @@ function decodeImageData(image) {
     throw new Error('The source image is empty.');
   }
   return buffer;
+}
+
+function parseAverageColor(value) {
+  if (!value || value.toLowerCase() === 'auto') {
+    return undefined;
+  }
+
+  const hex = value.startsWith('#') ? value.slice(1) : value;
+  const normalized = hex.length === 3
+    ? hex.split('').map(char => char + char).join('')
+    : hex;
+
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
+    throw new Error('averageColor must be "auto", #RRGGBB, or #RGB.');
+  }
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16)
+  };
 }
 
 function createServer() {
@@ -37,25 +58,27 @@ function createServer() {
         'Generate a Molanko Avatar from a source image. A source image is required; do not call this tool when no source image has been provided. The source image should be a Minecraft skin or another image supported by Molanko Avatar Generator. Returns the generated PNG as an MCP image result.',
       inputSchema: z.object({
         image: imageInput,
+        scale: z.number().positive().optional().default(1).describe('Nearest-neighbor output scale.'),
         outlineMode: z.number().int().min(0).optional().default(0).describe('Outline radius in pixels. 0 disables the outline.'),
-        outlineColor: z.string().optional().default('#000000').describe('Outline color as #RRGGBB, or an automatic preset such as auto_dark.'),
-        bgColor: z.string().optional().default('#ffffff').describe('Background color as #RRGGBB, or an automatic preset such as auto_light.'),
+        outlineColor: z.string().optional().default('#000000').describe('Outline color: auto_dark, auto_darker, auto_medium_dark, or a hex color.'),
+        bgColor: z.string().optional().default('#ffffff').describe('Background color: auto_light, auto_lighter, auto_medium_light, or a hex color.'),
+        fillBackground: z.boolean().optional().default(true).describe('Whether to fill the background.'),
         upscale48: z.boolean().optional().default(false).describe('Render the avatar on a 48x48 canvas with the 32x32 avatar centered.'),
-        fillBackground: z.boolean().optional().default(true).describe('Whether to fill the output background.'),
-        scale: z.number().positive().optional().default(1).describe('Nearest-neighbor output scale. 1 keeps the generator canvas size.')
+        averageColor: z.string().optional().describe('Override the color used by automatic outline/background colors. Use auto (default), #RRGGBB, or #RGB.')
       })
     },
-    async ({ image, outlineMode, outlineColor, bgColor, upscale48, fillBackground, scale }) => {
+    async ({ image, scale, outlineMode, outlineColor, bgColor, fillBackground, upscale48, averageColor }) => {
       try {
         const sourceImage = await loadImage(decodeImageData(image));
         const outputCanvas = processTexture(sourceImage, {
           createCanvas,
+          scale,
           outlineMode,
           outlineColor,
           bgColor,
-          upscale48,
           fillBackground,
-          scale
+          upscale48,
+          averageColor: parseAverageColor(averageColor)
         });
 
         const output = outputCanvas.toBuffer('image/png');
@@ -74,47 +97,6 @@ function createServer() {
         return {
           isError: true,
           content: [{ type: 'text', text: `Failed to generate Molanko Avatar: ${message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'average_color',
-    {
-      title: 'Calculate Average Color',
-      description:
-        'Calculate the average RGB color of a provided source image, ignoring fully transparent pixels. A source image is required.',
-      inputSchema: z.object({
-        image: imageInput
-      })
-    },
-    async ({ image }) => {
-      try {
-        const sourceImage = await loadImage(decodeImageData(image));
-        const canvas = createCanvas(sourceImage.width, sourceImage.height);
-        const context = canvas.getContext('2d');
-        context.drawImage(sourceImage, 0, 0);
-
-        const color = getAverageColor(canvas);
-        const hex = `#${[color.r, color.g, color.b]
-          .map(value => value.toString(16).padStart(2, '0'))
-          .join('')}`;
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ ...color, hex })
-            }
-          ],
-          structuredContent: { ...color, hex }
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          isError: true,
-          content: [{ type: 'text', text: `Failed to calculate average color: ${message}` }]
         };
       }
     }
